@@ -1,3 +1,20 @@
+# Abhängigkeitsprüfung
+required_packages = ["streamlit", "pandas", "requests", "openpyxl"]
+missing_packages = []
+
+for pkg in required_packages:
+    try:
+        __import__(pkg)
+    except ImportError:
+        missing_packages.append(pkg)
+
+if missing_packages:
+    import sys
+    import streamlit as st
+    st.error(f"Fehlende Abhängigkeiten: {', '.join(missing_packages)}.\n"
+             f"Bitte installiere sie mit: pip install {' '.join(missing_packages)}")
+    sys.exit(1)
+
 import streamlit as st
 import pandas as pd
 import requests
