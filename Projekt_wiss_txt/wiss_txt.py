@@ -21,6 +21,7 @@ import requests
 import time
 import json
 import io
+import re
 from datetime import datetime
 
 st.set_page_config(
@@ -45,7 +46,7 @@ def get_publication_data(keywords, start_year, end_year, doc_types, open_access_
         # Filterbedingungen erstellen
         filters = []
         
-        # Jahresfilter hinzufügen - Stelle sicher dass die Jahre als Integer sind
+        # Jahresfilter hinzufügen - Jahre als Integer
         if start_year and end_year:
             filters.append(f"publication_year:{int(start_year)}-{int(end_year)}")
         elif start_year:
@@ -196,7 +197,7 @@ def get_publication_data(keywords, start_year, end_year, doc_types, open_access_
                                     year_str = str(year).replace('.', '')
                                     if ',' in year_str:
                                         year_str = year_str.replace(',', '')
-                                                                # Bereinige und prüfe die Jahreszahl
+                                    # Bereinige und prüfe die Jahreszahl
                                     if len(year_str) >= 4:
                                         year = int(year_str[:4])  # Nehme die ersten 4 Ziffern
                                     else:
@@ -247,12 +248,71 @@ def get_publication_data(keywords, start_year, end_year, doc_types, open_access_
                         is_open_access = item.get('open_access', {}).get('is_oa', False)
                         open_access_status = "Open Access" if is_open_access else "Kostenpflichtig"
                         
+                        # NEU: Extrahiere Ausgabenummer
+                        issue = ""
+                        # Prüfe bibliographische Informationen
+                        biblio = item.get('biblio', {})
+                        if biblio:
+                            issue = biblio.get('issue', "")
+                            
+                        # NEU: Extrahiere spezifische Seitenzahlen
+                        pages = ""
+                        if biblio:
+                            # Direkte Seitennummerierung aus bibliographischen Daten
+                            first_page = biblio.get('first_page', "")
+                            last_page = biblio.get('last_page', "")
+                            if first_page and last_page:
+                                # Wenn es ein Bereich ist (z.B. von Seite 53 bis 67)
+                                pages = f"{first_page}-{last_page}"
+                            elif first_page:
+                                # Wenn es nur eine Seite ist (z.B. Seite 53)
+                                pages = first_page
+                        
+                        # Wenn in den bibliographischen Daten nichts gefunden wurde, suche in anderen Metadaten
+                        if not pages:
+                            # Versuche es über die abstract_inverted_index, dort sind manchmal Seitenangaben enthalten
+                            abstract = item.get('abstract_inverted_index', {})
+                            if abstract:
+                                abstract_text = ' '.join([k for k in abstract.keys() if isinstance(k, str)])
+                                # Versuche verschiedene Seitenangabenformate zu finden
+                                page_patterns = [
+                                    r'Seite[n]?\s+(\d+)(?:\s*-\s*(\d+))?',  # "Seite 53" oder "Seiten 53-67"
+                                    r'S\.\s+(\d+)(?:\s*-\s*(\d+))?',         # "S. 53" oder "S. 53-67"
+                                    r'pp?\.\s+(\d+)(?:\s*-\s*(\d+))?',       # "p. 53" oder "pp. 53-67"
+                                    r'page[s]?\s+(\d+)(?:\s*-\s*(\d+))?'     # "page 53" oder "pages 53-67"
+                                ]
+                                
+                                for pattern in page_patterns:
+                                    page_match = re.search(pattern, abstract_text, re.IGNORECASE)
+                                    if page_match:
+                                        if page_match.group(2):  # Bereich gefunden
+                                            pages = f"{page_match.group(1)}-{page_match.group(2)}"
+                                        else:  # Einzelne Seite
+                                            pages = page_match.group(1)
+                                        break
+                            
+                            # Wenn immer noch nichts gefunden wurde, versuche es mit der Volltextreferenz
+                            if not pages:
+                                # Prüfe referenced_works und andere Felder
+                                ref_text = str(item.get('referenced_works', []))
+                                ref_text += str(item.get('alternate_abstracts', []))
+                                
+                                # Suche nach Seitenzahlangaben in verschiedenen Formaten
+                                page_match = re.search(r'(?:pp?\.|Seite[n]?|S\.)\s*(\d+)(?:\s*[-–]\s*(\d+))?', ref_text, re.IGNORECASE)
+                                if page_match:
+                                    if page_match.group(2):  # Bereich gefunden
+                                        pages = f"{page_match.group(1)}-{page_match.group(2)}"
+                                    else:  # Einzelne Seite
+                                        pages = page_match.group(1)
+                        
                         # Füge Ergebnis hinzu
                         results.append({
                             "Titel": title,
                             "Autoren": authors,
                             "Jahr": year,
                             "Journal/Quelle": journal,
+                            "Ausgabe": issue,  # Neue Spalte
+                            "Seiten": pages,   # Neue Spalte
                             "Typ": doc_type,
                             "Zitationen": citations,
                             "Open Access": open_access_status,
