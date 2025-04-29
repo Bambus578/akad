@@ -1,6 +1,6 @@
 # Wissenschaftliche Literaturrecherche Tool
 
-Eine Streamlit-Anwendung zur Suche nach wissenschaftlichen Publikationen der letzten 5 Jahre.
+Eine Streamlit-Anwendung zur Suche nach wissenschaftlichen Publikationen.
 
 ## Features
 
