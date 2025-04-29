@@ -1,11 +1,11 @@
 # Wissenschaftliche Literaturrecherche Tool
 
-Eine Streamlit-Anwendung zur Suche nach wissenschaftlichen Publikationen der letzten 5 Jahre.
+Eine Streamlit-Anwendung zur Suche nach wissenschaftlichen Publikationen.
 
 ## Features
 
 - Suche nach wissenschaftlichen Publikationen über die Semantic Scholar API
-- Berücksichtigung nur von Publikationen der letzten 5 Jahre
+- Berücksichtigung nur von Publikationen
 - Export der Ergebnisse in Excel-Format
 - Erfassung von Titel, Autoren, Jahr, Journal/Quelle und URL/DOI
 - Benutzerfreundliche Oberfläche mit Fortschrittsanzeige
